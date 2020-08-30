@@ -334,6 +334,7 @@ std::unique_ptr<LayerExtWrapper> LayerExtWrapper::Create() {
 int LayerExtWrapper::getLayerClass(const std::string &name) {
   return mInst->GetLayerClass(name);
 }
+
 #endif
 
 LayerExtWrapper::~LayerExtWrapper() {
@@ -944,7 +945,7 @@ void SurfaceFlinger::init() {
     }
 
 #ifdef QCOM_UM_FAMILY
-    if (mUseLayerExt) {
+    if (mUseLayerExt || mSplitLayerExt) {
         mLayerExt = LayerExtWrapper::Create();
         if (!mLayerExt) {
             ALOGE("Failed to create layer extension");
@@ -1256,7 +1257,7 @@ status_t SurfaceFlinger::setActiveConfig(const sp<IBinder>& displayToken, int mo
     // RefreshRateConfigs are only supported on Primary display.
     if (display && display->isPrimary()) {
         mRefreshRateConfigs.setActiveConfig(mode);
-        mRefreshRateConfigs.populate(getHwComposer().getConfigs(*display->getId()));
+        mRefreshRateConfigs.repopulate(getHwComposer().getConfigs(*display->getId()));
     }
 
     return setAllowedDisplayConfigs(displayToken, allowedConfig);
@@ -1502,7 +1503,7 @@ status_t SurfaceFlinger::setDisplayContentSamplingEnabled(const sp<IBinder>& dis
 }
 
 status_t SurfaceFlinger::setDisplayElapseTime(const sp<DisplayDevice>& display) const {
-    if (!mUseAdvanceSfOffset && mPhaseOffsets->getCurrentSfOffset() >= 0) {
+    if (!mUseAdvanceSfOffset || mPhaseOffsets->getCurrentSfOffset() >= 0) {
         return OK;
     }
 
@@ -4227,11 +4228,13 @@ bool SurfaceFlinger::doComposeSurfaces(const sp<DisplayDevice>& displayDevice,
     ALOGV("Rendering client layers");
     bool firstLayer = true;
     Region clearRegion = Region::INVALID_REGION;
+    std::vector<std::string> layers;
     for (auto& layer : displayDevice->getVisibleLayersSortedByZ()) {
         const Region viewportRegion(displayState.viewport);
         const Region clip(viewportRegion.intersect(layer->visibleRegion));
         ALOGV("Layer: %s", layer->getName().string());
         ALOGV("  Composition type: %s", toString(layer->getCompositionType(displayDevice)).c_str());
+        layers.push_back(layer->getName().string());
         if (!clip.isEmpty()) {
             switch (layer->getCompositionType(displayDevice)) {
                 case Hwc2::IComposerClient::Composition::CURSOR:
@@ -6801,7 +6804,7 @@ status_t SurfaceFlinger::onTransact(uint32_t code, const Parcel& data, Parcel* r
                     // RefreshRateConfigs are only supported on Primary display.
                     if (display && display->isPrimary()) {
                         mRefreshRateConfigs.setActiveConfig(n);
-                        mRefreshRateConfigs.populate(getHwComposer().getConfigs(*display->getId()));
+                        mRefreshRateConfigs.repopulate(getHwComposer().getConfigs(*display->getId()));
                     }
                     status_t result = setAllowedDisplayConfigs(displayToken, {n});
                     if (result != NO_ERROR) {

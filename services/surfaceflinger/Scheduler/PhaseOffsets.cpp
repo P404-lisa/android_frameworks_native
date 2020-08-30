@@ -47,7 +47,26 @@ PhaseOffsets::PhaseOffsets() {
     property_get("debug.sf.early_gl_app_phase_offset_ns", value, "-1");
     const int earlyGlAppOffsetNs = atoi(value);
 
-    // Phase Offsets for HIGH1 or HIGH2 Refresh Rate type.
+    // Phase Offsets for HIGH2 Refresh Rate type.
+    property_get("debug.sf.high2_fps_early_phase_offset_ns", value, "-1");
+    const int high2FpsEarlySfOffsetNs = atoi(value);
+
+    property_get("debug.sf.high2_fps_early_gl_phase_offset_ns", value, "-1");
+    const int high2FpsEarlyGlSfOffsetNs = atoi(value);
+
+    property_get("debug.sf.high2_fps_early_app_phase_offset_ns", value, "-1");
+    const int high2FpsEarlyAppOffsetNs = atoi(value);
+
+    property_get("debug.sf.high2_fps_early_gl_app_phase_offset_ns", value, "-1");
+    const int high2FpsEarlyGlAppOffsetNs = atoi(value);
+
+    property_get("debug.sf.high2_fps_late_app_phase_offset_ns", value, "-1");
+    const int high2FpsLateAppOffsetNs = atoi(value);
+
+    property_get("debug.sf.high2_fps_late_sf_phase_offset_ns", value, "-1");
+    const int high2FpsLateSfOffsetNs = atoi(value);
+
+    // Phase Offsets for HIGH1 Refresh Rate type.
     property_get("debug.sf.high_fps_early_phase_offset_ns", value, "-1");
     const int highFpsEarlySfOffsetNs = atoi(value);
 
@@ -97,6 +116,8 @@ PhaseOffsets::PhaseOffsets() {
 
     Offsets defaultOffsets;
     Offsets highFpsOffsets;
+    Offsets perfFpsOffsets;
+    Offsets high2FpsOffsets;
 
     defaultOffsets.early = {RefreshRateType::DEFAULT,
                             earlySfOffsetNs != -1 ? earlySfOffsetNs : sfVsyncPhaseOffsetNs,
@@ -126,8 +147,25 @@ PhaseOffsets::PhaseOffsets() {
                            highFpsLateAppOffsetNs};
 
 #ifdef QCOM_UM_FAMILY
+    // If a high2_fps property is not configured, it defaults to corresponding high_fps prop value.
+    high2FpsOffsets.early = {RefreshRateType::HIGH2,
+                            high2FpsEarlySfOffsetNs != -1 ? high2FpsEarlySfOffsetNs
+                                                          : highFpsLateSfOffsetNs,
+                            high2FpsEarlyAppOffsetNs != -1 ? high2FpsEarlyAppOffsetNs
+                                                           : highFpsLateAppOffsetNs};
+    high2FpsOffsets.earlyGl = {RefreshRateType::HIGH2,
+                              high2FpsEarlyGlSfOffsetNs != -1 ? high2FpsEarlyGlSfOffsetNs
+                                                              : highFpsLateSfOffsetNs,
+                              high2FpsEarlyGlAppOffsetNs != -1 ? high2FpsEarlyGlAppOffsetNs
+                                                               : highFpsLateAppOffsetNs};
+
+    high2FpsOffsets.late = {RefreshRateType::HIGH2,
+                           high2FpsLateSfOffsetNs != -1 ? high2FpsLateSfOffsetNs
+                                                        : highFpsOffsets.late.sf,
+                           high2FpsLateAppOffsetNs != -1 ? high2FpsLateAppOffsetNs
+                                                         : highFpsOffsets.late.app};
+
     // If a perf_fps property is not configured, it defaults to corresponding high_fps prop value.
-    Offsets perfFpsOffsets;
     perfFpsOffsets.early = {RefreshRateType::PERFORMANCE,
                             perfFpsEarlySfOffsetNs != -1 ? perfFpsEarlySfOffsetNs
                                                          : highFpsOffsets.early.sf,
@@ -153,7 +191,7 @@ PhaseOffsets::PhaseOffsets() {
     mOffsets.insert({RefreshRateType::LOW1, defaultOffsets});
     mOffsets.insert({RefreshRateType::LOW2, defaultOffsets});
     mOffsets.insert({RefreshRateType::HIGH1, highFpsOffsets});
-    mOffsets.insert({RefreshRateType::HIGH2, highFpsOffsets});
+    mOffsets.insert({RefreshRateType::HIGH2, high2FpsOffsets});
 #else
     mOffsets.insert({RefreshRateType::PERFORMANCE, highFpsOffsets});
 #endif
