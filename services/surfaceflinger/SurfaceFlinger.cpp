@@ -3212,6 +3212,7 @@ void SurfaceFlinger::postComposition() {
     UpdateSmomoState();
 
     if (isDisplayConnected && !display->isPoweredOn()) {
+        getRenderEngine().cleanupPostRender();
         return;
     }
 
